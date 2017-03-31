@@ -122,7 +122,7 @@ void loop(){
       
    }else if (buttonStopState == LOW && lastStopState == HIGH && state == true){
       state = false;                                      
-      lastButtonState = buttonState;                      // store buttonState in lastButtonState, to compare next time
+      lastStopState = buttonStopState;                      // store buttonState in lastButtonState, to compare next time
       // Elapsed Time Routine            
       elapsedTime = millis() - startTime;                 // store elapsed time
       elapsedMinutes = (elapsedTime / 60000L);
@@ -156,10 +156,10 @@ void loop(){
 //########################### Make it write an ending message ##################################################     
      
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------   
-   }
+   }else{
    lastStopState = buttonStopState;                       // store buttonState in lastButtonState, to compare next time
    lastStartState = buttonStartState;                     // store buttonState in lastButtonState, to compare next time
-   
+   }
    // When timer is running clear the LCD, only print time when stopped
    if (state == true){
       lcd.clear();                                    // clear the LCD
@@ -239,4 +239,3 @@ void loop(){
    }
    
 } //End Of Loop Function
-
