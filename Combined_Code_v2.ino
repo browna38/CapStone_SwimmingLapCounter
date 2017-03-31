@@ -9,17 +9,20 @@
 LiquidCrystal lcd(32,30,28,26,24,22);
 
 // For Sensor Code:
-#define TRIGGER_PIN  33                 
-#define ECHO_PIN     2              // PWM Pin
-#define Buzzer       13             //Buzzer PWM Pin
-#define CS_PIN       53
+#define TRIGGER_PIN  38                 
+#define ECHO_PIN     7              // PWM Pin
+#define Buzzer       3              //Buzzer PWM Pin
 
-// For Timer Code, Start/Stop:
-int buttonPin = 34;                 // button on pin 34
-
-int buttonState;                    // variable to store button state
-int lastButtonState;                // variable to store last button state
+// Start/Stop button pins and variables
+int buttonStart = 34;               // start button on pin 34
+int buttonStartState;               // variable to store start button state
+int lastStartState = HIGH;                 // variable to store last start button state
+int buttonStop = 36;                // stop button on pin 36
+int buttonStopState;                // variable to store stop button state
+int lastStopState = HIGH;                  // variable to store last stop button state
 int state;                          // variable to differ from button conditions
+
+int lapCount = 0;
 
 int frameRate = 100;                // the frame rate (frames per second) at which the stopwatch runs
 long interval = (1000/frameRate);   // blink interval
@@ -49,28 +52,29 @@ void setup(){
   
   pinMode(TRIGGER_PIN, OUTPUT);    // Set Trigger Pin as Output
   pinMode(ECHO_PIN, INPUT);        // Set Echo Pin as Input
-  pinMode(buttonPin, INPUT);       // Set Pin as Input
+  pinMode(buttonStart, INPUT);     // Set Pin as Input
+  pinMode(buttonStop, INPUT);      // Set Pin as Input
   pinMode(Buzzer, OUTPUT);         // Buzzer Pin as Output
-  pinMode(CS_PIN, OUTPUT);         // Set SD card chip select as output
+  pinMode(chipSelect, OUTPUT);     // Set SD card chip select as output
 
-  digitalWrite(CS_PIN, HIGH);
+  digitalWrite(chipSelect, HIGH);
   
-  digitalWrite(buttonPin, HIGH);   // Turn on pullup resistors. Wire button so that press shorts pin to ground.
-
+  digitalWrite(buttonStart, HIGH);   // Turn on pullup resistors. Wire button so that press shorts pin to ground.
+  digitalWrite(buttonStop, HIGH);   // Turn on pullup resistors. Wire button so that press shorts pin to ground.
   if (!SD.begin(chipSelect)) {     // See if the SD card is present and can be initialized
     return;
   }
   
   lcd.setCursor(0,0);
-  lcd.print("      Timer     ");
+  lcd.print("  Swimming Data ");
   lcd.setCursor(0,1);
-  lcd.print("       G02      ");
+  lcd.print("Acquisition Sys");
 }
 
 void loop(){
   float Duration, Distance;
-  buttonState = digitalRead(buttonPin);                   // Check for button press, read the button state and store
-
+  buttonStartState = digitalRead(buttonStart);      // Check for button press, read the button state and store
+  buttonStopState = digitalRead(buttonStop);
   // Initialize for Sensor:
   digitalWrite(TRIGGER_PIN, LOW);
   delayMicroseconds(2);
@@ -84,7 +88,7 @@ void loop(){
 //-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
 //  Timer Code - Start Stop function with running time
 //-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_-_
-   if (buttonState == LOW && lastButtonState == HIGH  &&  state == false){
+   if (buttonStartState == LOW && lastStartState == HIGH  &&  state == false){
       lapDelay = true;                                    // Makes it not count a lap as you begin
       //Starting Tones To Inform Swimmer Of Beginning Of Session:
       sound = 800;                                        // Tone of buzzer that will be played
@@ -110,13 +114,14 @@ void loop(){
       startTime = millis();                               // store the start time (millis() is the time in milliseconds from which the program started running)
       state = true;                                       // turn on blinking while timing   
       delay(10);                                          // short delay to debounce switch
-      lastButtonState = buttonState;                      // store buttonState in lastButtonState, to compare next time 
+      lastStartState = buttonStartState;                  // store buttonState in lastButtonState, to compare next time 
       
       delay(5000);                                        // Waits 5s for you to get away from the wall
       lapDelay = false;                                   // Allows the next incoming lap to be counted
+      lapCount = 0;
       
-   }else if (buttonState == LOW && lastButtonState == HIGH && state == true){
-      state = false;                                      // turn off blinking, all done timing
+   }else if (buttonStopState == LOW && lastStopState == HIGH && state == true){
+      state = false;                                      
       lastButtonState = buttonState;                      // store buttonState in lastButtonState, to compare next time
       // Elapsed Time Routine            
       elapsedTime = millis() - startTime;                 // store elapsed time
@@ -144,16 +149,23 @@ void loop(){
             lcd.print("0");                                
       }     
       lcd.print(itoa(fractional, buf, 10));              
+      lcd.setCursor(0,1);
+      lcd.print("Lap Count: ");
+      lcd.print(lapCount);
+      lastStopState = buttonStopState;                       // store buttonState in lastButtonState, to compare next time
+//########################### Make it write an ending message ##################################################     
+     
 //-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------   
-   }else{
-      lastButtonState = buttonState;                       // store buttonState in lastButtonState, to compare next time
    }
-
+   lastStopState = buttonStopState;                       // store buttonState in lastButtonState, to compare next time
+   lastStartState = buttonStartState;                     // store buttonState in lastButtonState, to compare next time
+   
    // When timer is running clear the LCD, only print time when stopped
    if (state == true){
       lcd.clear();                                    // clear the LCD
       if(Distance <= 30 && Distance >= 20  && lapDelay == false){   //If we are between 30-20cm and haven't recorded a lap in the last 10s we want the buzzer to go off
           lapDelay = true;                                    // Stops it from counting another lap immediately
+          lapCount++;                                         // increment lap count
           elapsedTime =   millis() - startTime;               // store elapsed time
           elapsedMinutes = (elapsedTime / 60000L);
           elapsedSeconds = (elapsedTime / 1000L);             // divide by 1000 to convert to seconds - then cast to an int to print
@@ -179,9 +191,14 @@ void loop(){
               lcd.print("0");                                
           }     
           lcd.print(itoa(fractional, buf, 10));
+          lcd.setCursor(0,1);
+          lcd.print("Lap Count: ");
+          lcd.print(lapCount);
 //-------------------------------------------------------------------------------------------------------------------------------------------------------
           
-          String dataString = "";                             // Creating a 00:00:00 form string with the lap time
+          String dataString = "Lap ";                         // Creating a 00:00:00 form string with the lap time
+          dataString += String(lapCount);                     //
+          dataString += " ";                                  //
           if (fractionalMins < 10){                           //
             dataString += String(0);                          //
           }                                                   //
